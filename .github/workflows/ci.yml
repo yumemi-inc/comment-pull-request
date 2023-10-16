@@ -1,0 +1,20 @@
+name: CI
+
+on: push
+
+jobs:
+  check:
+    name: Use this action for check
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Use this action
+        uses: ./
+        with:
+          comment: 'CI passed. ref: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+          previous-comment: 'hide'
+          pull-request-number: 1

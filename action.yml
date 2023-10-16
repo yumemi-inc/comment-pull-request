@@ -1,0 +1,98 @@
+name: 'Comment Pull Request'
+description: 'A GitHub Action for commenting on pull requests from workflows.'
+author: 'YUMEMI Inc.'
+branding:
+  icon: 'message-circle'
+  color: 'blue'
+inputs:
+  comment:
+    description: 'Comment text.'
+    required: true
+  comment-if-failure:
+    description: 'Comment text to be used with priority when job status is failure. If not specified, normal comment will be used.'
+    required: false
+  grouping-key:
+    description: 'Key to group comments. Comments from the same group are deleted, hidden, or edited.'
+    required: false
+    default: '${{ github.workflow }}-${{ github.job }}'
+  previous-comment:
+    description: 'One of delete, hide, edit, or keep. See README for details.'
+    required: false
+    default: 'delete'
+  pull-request-number:
+    description: 'Target pull request number.'
+    required: false
+    default: ${{ github.event.pull_request.number }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Comment
+      shell: bash
+      env:
+        COMMENT: ${{ job.status == 'failure' && inputs.comment-if-failure || inputs.comment }}
+        TAG: '<comment-pull-request:${{ inputs.grouping-key }}>'
+        PREVIOUS_COMMENT: ${{ inputs.previous-comment }}
+        PR_NUMBER: ${{ inputs.pull-request-number }}
+        GH_REPO: ${{ github.repository }} # for GitHub CLI
+        GH_TOKEN: ${{ github.token }} # for GitHub CLI
+        IS_VALID_PREVIOUS_COMMENT: ${{ inputs.previous-comment != null && contains(fromJSON('["delete","hide","edit","keep"]'), inputs.previous-comment) }}
+      run: |
+        function raise_error() {
+          echo "::error::$1"
+          return 1
+        }
+
+        function raise_permission_error() {
+          raise_error "May not have 'pull-requests: write' permission."
+        }
+
+        if [[ -z "$COMMENT" ]]; then raise_error "Specify 'comment' or 'failure-comment' input."; fi
+
+        if [[ -z "$PR_NUMBER" ]]; then raise_error "Specify 'pull-request-number' input."; fi
+
+        if [[ "$IS_VALID_PREVIOUS_COMMENT" != 'true' ]]; then raise_error "'previous-comment' input must be one of delete, hide, edit, or keep."; fi
+
+        echo "::debug::gh version: $(gh --version | tr '\n' ' ')"
+        echo "::debug::jq version: $(jq --version)"
+
+        # have pemisson?
+        gh api repos/{owner}/{repo}/pulls --silent > /dev/null 2>&1 || raise_permission_error
+
+        # valid pull request number?
+        gh api "repos/{owner}/{repo}/pulls/$PR_NUMBER" --silent > /dev/null 2>&1 || raise_error "'pull-request-number' input is not valid."
+
+        readonly comments="$(gh api "repos/{owner}/{repo}/issues/$PR_NUMBER/comments" --paginate | jq --arg tag "$TAG" 'reverse|.[]|select(.body|contains($tag))')"
+        readonly ids="$(echo "$comments" | jq '.id')"
+        readonly node_ids="$(echo "$comments" | jq -r '.node_id')"
+
+        if [[ "$PREVIOUS_COMMENT" == 'delete' ]]; then
+          echo "::debug::ids: $(echo "$ids" | tr '\n' ',')"
+          IFS=$'\n'
+          for id in $ids ; do
+            gh api --method DELETE "repos/{owner}/{repo}/issues/comments/$id" --silent > /dev/null 2>&1 || raise_permission_error
+          done
+        fi
+
+        if [[ "$PREVIOUS_COMMENT" == 'hide' ]]; then
+          echo "::debug::node_ids: $(echo "$node_ids" | tr '\n' ',')"
+          IFS=$'\n'
+          for node_id in $node_ids ; do
+            gh api graphql -f query="
+              mutation {
+                minimizeComment(input: { subjectId: \"$node_id\", classifier: OUTDATED }) {
+                  minimizedComment { isMinimized }
+                }
+              }
+            " --silent > /dev/null 2>&1 || raise_permission_error
+          done
+        fi
+
+        readonly comment="$(echo -e "<!-- $TAG -->\n\n$COMMENT")"
+
+        if [[ "$PREVIOUS_COMMENT" == 'edit' && -n "$ids" ]]; then
+          last_id="$(echo "$ids" | head -1)"
+          echo "::debug::last_id: $last_id"
+          gh api --method PATCH "repos/{owner}/{repo}/issues/comments/$last_id" -f "body=$comment" --silent > /dev/null 2>&1 || raise_permission_error
+        else
+          gh api --method POST "repos/{owner}/{repo}/issues/$PR_NUMBER/comments" -f "body=$comment" --silent > /dev/null 2>&1 || raise_permission_error
+        fi
