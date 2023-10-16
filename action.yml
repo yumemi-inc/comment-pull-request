@@ -65,7 +65,7 @@ runs:
         readonly ids="$(echo "$comments" | jq '.id')"
         readonly node_ids="$(echo "$comments" | jq -r '.node_id')"
 
-        if [[ "$PREVIOUS_COMMENT" == 'delete' ]]; then
+        if [[ "$PREVIOUS_COMMENT" == 'delete' && -n "$ids" ]]; then
           echo "::debug::ids: $(echo "$ids" | tr '\n' ',')"
           IFS=$'\n'
           for id in $ids ; do
@@ -73,7 +73,7 @@ runs:
           done
         fi
 
-        if [[ "$PREVIOUS_COMMENT" == 'hide' ]]; then
+        if [[ "$PREVIOUS_COMMENT" == 'hide' && -n "$node_ids" ]]; then
           echo "::debug::node_ids: $(echo "$node_ids" | tr '\n' ',')"
           IFS=$'\n'
           for node_id in $node_ids ; do
