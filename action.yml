@@ -37,23 +37,14 @@ runs:
         GH_TOKEN: ${{ github.token }} # for GitHub CLI
         IS_VALID_PREVIOUS_COMMENT: ${{ inputs.previous-comment != null && contains(fromJSON('["delete","hide","edit","keep"]'), inputs.previous-comment) }}
       run: |
-        function raise_error() {
-          echo "::error::$1"
-          return 1
-        }
-
-        function raise_permission_error() {
-          raise_error "May not have 'pull-requests: write' permission."
-        }
-
-        if [[ -z "$COMMENT" ]]; then raise_error "Specify 'comment' or 'failure-comment' input."; fi
-
-        if [[ -z "$PR_NUMBER" ]]; then raise_error "Specify 'pull-request-number' input."; fi
-
-        if [[ "$IS_VALID_PREVIOUS_COMMENT" != 'true' ]]; then raise_error "'previous-comment' input must be one of delete, hide, edit, or keep."; fi
-
         echo "::debug::gh version: $(gh --version | tr '\n' ' ')"
         echo "::debug::jq version: $(jq --version)"
+
+        source "$GITHUB_ACTION_PATH/raise_error.sh"
+
+        if [ -z "$COMMENT" ]; then raise_error "Specify 'comment' or 'failure-comment' input."; fi
+
+        if [ "$IS_VALID_PREVIOUS_COMMENT" != 'true' ]; then raise_error "'previous-comment' input must be one of delete, hide, edit, or keep."; fi
 
         # have pemisson?
         gh api repos/{owner}/{repo}/pulls --silent > /dev/null 2>&1 || raise_permission_error
@@ -61,12 +52,11 @@ runs:
         # valid pull request number?
         gh api "repos/{owner}/{repo}/pulls/$PR_NUMBER" --silent > /dev/null 2>&1 || raise_error "'pull-request-number' input is not valid."
 
-        readonly comments="$(gh api "repos/{owner}/{repo}/issues/$PR_NUMBER/comments" --paginate | jq --arg tag "$TAG" 'reverse|.[]|select(.body|contains($tag))')"
-        readonly ids="$(echo "$comments" | jq '.id')"
-        readonly node_ids="$(echo "$comments" | jq -r '.node_id')"
+        comments="$(gh api "repos/{owner}/{repo}/issues/$PR_NUMBER/comments" --paginate | jq --arg tag "$TAG" 'reverse|.[]|select(.body|contains($tag))')"
+        ids="$(echo "$comments" | jq '.id')"
+        node_ids="$(echo "$comments" | jq -r '.node_id')"
 
         if [[ "$PREVIOUS_COMMENT" == 'delete' && -n "$ids" ]]; then
-          echo "::debug::ids: $(echo "$ids" | tr '\n' ',')"
           IFS=$'\n'
           for id in $ids ; do
             gh api --method DELETE "repos/{owner}/{repo}/issues/comments/$id" --silent > /dev/null 2>&1 || raise_permission_error
@@ -74,7 +64,6 @@ runs:
         fi
 
         if [[ "$PREVIOUS_COMMENT" == 'hide' && -n "$node_ids" ]]; then
-          echo "::debug::node_ids: $(echo "$node_ids" | tr '\n' ',')"
           IFS=$'\n'
           for node_id in $node_ids ; do
             gh api graphql -f query="
@@ -87,11 +76,10 @@ runs:
           done
         fi
 
-        readonly comment="$(echo -e "<!-- $TAG -->\n\n$COMMENT")"
+        comment="$(echo -e "<!-- $TAG -->\n\n$COMMENT")"
 
         if [[ "$PREVIOUS_COMMENT" == 'edit' && -n "$ids" ]]; then
           last_id="$(echo "$ids" | head -1)"
-          echo "::debug::last_id: $last_id"
           gh api --method PATCH "repos/{owner}/{repo}/issues/comments/$last_id" -f "body=$comment" --silent > /dev/null 2>&1 || raise_permission_error
         else
           gh api --method POST "repos/{owner}/{repo}/issues/$PR_NUMBER/comments" -f "body=$comment" --silent > /dev/null 2>&1 || raise_permission_error

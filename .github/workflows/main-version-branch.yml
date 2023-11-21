@@ -7,6 +7,8 @@ on:
 jobs:
   main-version-branch:
     name: Create Main version branch
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Check out
