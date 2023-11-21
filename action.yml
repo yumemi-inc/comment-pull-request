@@ -52,9 +52,10 @@ runs:
         # valid pull request number?
         gh api "repos/{owner}/{repo}/pulls/$PR_NUMBER" --silent > /dev/null 2>&1 || raise_error "'pull-request-number' input is not valid."
 
-        comments="$(gh api "repos/{owner}/{repo}/issues/$PR_NUMBER/comments" --paginate | jq --arg tag "$TAG" 'reverse|.[]|select(.body|contains($tag))')"
-        ids="$(echo "$comments" | jq '.id')"
-        node_ids="$(echo "$comments" | jq -r '.node_id')"
+        # on windows, jq's return contains CR
+        comments="$(gh api "repos/{owner}/{repo}/issues/$PR_NUMBER/comments" --paginate | jq --arg tag "$TAG" 'reverse|.[]|select(.body|contains($tag))' | tr -d '\r')"
+        ids="$(echo "$comments" | jq '.id' | tr -d '\r')"
+        node_ids="$(echo "$comments" | jq -r '.node_id' | tr -d '\r')"
 
         if [[ "$PREVIOUS_COMMENT" == 'delete' && -n "$ids" ]]; then
           IFS=$'\n'
