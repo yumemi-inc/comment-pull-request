@@ -1,4 +1,4 @@
-name: 'Comment Pull Request'
+name: 'Comment Pull Request for workflow'
 description: 'A GitHub Action for commenting on pull requests from workflows.'
 author: 'YUMEMI Inc.'
 branding:
