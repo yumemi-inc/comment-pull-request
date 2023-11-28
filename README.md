@@ -87,3 +87,8 @@ comment: |
 ```
 
 It is recommended to write reports such as test results and coverage in the summary rather than in comments.
+
+## Use in triggers other than `pull_request` events
+
+Basically, this action is used in the `pull_request` event trigger, but you can use it in any trigger by specifying `pull-request-number` input (default is `${{ github.event.pull_request.number }}`).
+Even if this input is omitted, number will be searched for using the commit SHA specified in `sha` input (default is `${{ github.sha }}`), but if it cannot be found, explicitly specify `pull-request-number` input.

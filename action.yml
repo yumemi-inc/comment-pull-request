@@ -23,6 +23,10 @@ inputs:
     description: 'Target pull request number.'
     required: false
     default: ${{ github.event.pull_request.number }}
+  sha:
+    description: 'Commit SHA used to search for pull request number.'
+    required: false
+    default: ${{ github.sha }}
 runs:
   using: 'composite'
   steps:
@@ -33,6 +37,7 @@ runs:
         TAG: '<comment-pull-request:${{ inputs.grouping-key }}>'
         PREVIOUS_COMMENT: ${{ inputs.previous-comment }}
         PR_NUMBER: ${{ inputs.pull-request-number }}
+        SHA: ${{ inputs.sha }}        
         GH_REPO: ${{ github.repository }} # for GitHub CLI
         GH_TOKEN: ${{ github.token }} # for GitHub CLI
         IS_VALID_PREVIOUS_COMMENT: ${{ inputs.previous-comment != null && contains(fromJSON('["delete","hide","edit","keep"]'), inputs.previous-comment) }}
@@ -49,11 +54,26 @@ runs:
         # have pemisson?
         gh api repos/{owner}/{repo}/pulls --silent > /dev/null 2>&1 || raise_permission_error
 
-        # valid pull request number?
-        gh api "repos/{owner}/{repo}/pulls/$PR_NUMBER" --silent > /dev/null 2>&1 || raise_error "'pull-request-number' input is not valid."
+        # get pull request number
+        if [ -n "$PR_NUMBER" ]; then
+          # valid pull request number?
+          gh api "repos/{owner}/{repo}/pulls/$PR_NUMBER" --silent > /dev/null 2>&1 || raise_error "'pull-request-number' input is not valid."
+          pr_number="$PR_NUMBER"
+        else
+          if [ -n "$SHA" ]; then
+            number="$(gh api "repos/{owner}/{repo}/commits/$SHA/pulls" | jq '.[0].number')" > /dev/null 2>&1 || raise_error "'sha' input is not valid."
+            if [[ -n "$number" && "$number" != 'null' ]]; then
+              pr_number="$number"
+            else
+              raise_error "Specify 'pull-request-number' input or specify 'sha' input related to pull request."
+            fi
+          else
+            raise_error "Specify 'sha' input."
+          fi
+        fi
 
         # on windows, jq's return contains CR
-        comments="$(gh api "repos/{owner}/{repo}/issues/$PR_NUMBER/comments" --paginate | jq --arg tag "$TAG" 'reverse|.[]|select(.body|contains($tag))' | tr -d '\r')"
+        comments="$(gh api "repos/{owner}/{repo}/issues/$pr_number/comments" --paginate | jq --arg tag "$TAG" 'reverse|.[]|select(.body|contains($tag))' | tr -d '\r')"
         ids="$(echo "$comments" | jq '.id' | tr -d '\r')"
         node_ids="$(echo "$comments" | jq -r '.node_id' | tr -d '\r')"
 
@@ -83,5 +103,5 @@ runs:
           last_id="$(echo "$ids" | head -1)"
           gh api --method PATCH "repos/{owner}/{repo}/issues/comments/$last_id" -f "body=$comment" --silent > /dev/null 2>&1 || raise_permission_error
         else
-          gh api --method POST "repos/{owner}/{repo}/issues/$PR_NUMBER/comments" -f "body=$comment" --silent > /dev/null 2>&1 || raise_permission_error
+          gh api --method POST "repos/{owner}/{repo}/issues/$pr_number/comments" -f "body=$comment" --silent > /dev/null 2>&1 || raise_permission_error
         fi
