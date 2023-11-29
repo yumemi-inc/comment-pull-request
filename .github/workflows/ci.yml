@@ -2,8 +2,7 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main]
+  merge_group:
 
 jobs:
   check:
@@ -19,9 +18,19 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v4
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+      - name: Get PR number
+        id: pr-number
+        if: github.event_name == 'merge_group'
+        shell: bash # for windlows
+        run: echo "number=$(echo '${{ github.ref }}' | awk '{gsub(/^.*pr-|-.*$/,"")}1')" >> "$GITHUB_OUTPUT"
       - name: Use this action
         uses: ./
         with:
           comment: 'CI ( ${{ matrix.runner }} ) passed. ref: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
           previous-comment: 'hide'
           grouping-key: ${{ matrix.runner }}-${{ github.workflow }}-${{ github.job }}
+          pull-request-number: ${{ github.event.pull_request.number || steps.pr-number.outputs.number }}
