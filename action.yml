@@ -68,7 +68,7 @@ runs:
               raise_error "Specify 'pull-request-number' input or specify 'sha' input related to pull request."
             fi
           else
-            raise_error "Specify 'sha' input."
+            raise_error "Specify 'pull-request-number' input or 'sha' input."
           fi
         fi
 
