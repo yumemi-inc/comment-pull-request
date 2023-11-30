@@ -10,6 +10,12 @@ Previous comments by the same job are deleted (or hidden or edited), thus avoidi
 See [action.yml](action.yml) for available action inputs.
 Note that this action requires `pull-requests: write` permission.
 
+### Supported workflow trigger events
+
+Basically, this action is used in a `pull_request` event trigger, but you can use it in any trigger by specifying `pull-request-number` input (default is `${{ github.event.pull_request.number }}`).
+
+Even if this input is omitted, the pull request number will be searched for using the commit SHA specified in `sha` input (default is `${{ github.sha }}`), but if it cannot be found, explicitly specify `pull-request-number` input.
+
 ### Basic
 
 Specify `comment` input.
@@ -73,9 +79,7 @@ comment: |
 
 ### Guide to job logs and summaries
 
-The URL for the job log and summary is `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`.
-
-About job summary: [Supercharging GitHub Actions with Job Summaries](https://github.blog/2022-05-09-supercharging-github-actions-with-job-summaries/)
+The URL for the job log and [summary](https://github.blog/2022-05-09-supercharging-github-actions-with-job-summaries/) is `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`.
 
 To guide this URL with comments, write as follows;
 
@@ -87,8 +91,3 @@ comment: |
 ```
 
 It is recommended to write reports such as test results and coverage in the summary rather than in comments.
-
-## Use in triggers other than `pull_request` events
-
-Basically, this action is used in the `pull_request` event trigger, but you can use it in any trigger by specifying `pull-request-number` input (default is `${{ github.event.pull_request.number }}`).
-Even if this input is omitted, number will be searched for using the commit SHA specified in `sha` input (default is `${{ github.sha }}`), but if it cannot be found, explicitly specify `pull-request-number` input.
