@@ -12,9 +12,10 @@ Note that this action requires `pull-requests: write` permission.
 
 ### Supported workflow trigger events
 
-Basically, this action is used in a `pull_request` event trigger, but you can use it in any trigger by specifying `pull-request-number` input (default is `${{ github.event.pull_request.number }}`).
+Basically, this action is used in `pull_request` events, but you can use it in any trigger by specifying `pull-request-number` input (default is `${{ github.event.pull_request.number }}`).
 
 Even if this input is omitted, the pull request number will be searched for using the commit SHA specified in `sha` input (default is `${{ github.sha }}`), but if it cannot be found, explicitly specify `pull-request-number` input.
+For example, in the case of [merge queue](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue), you cannot search using `${{ github.sha }}`, so do it like [this](https://github.com/yumemi-inc/comment-pull-request/blob/33fd83e2b15e09d164f6cc6d4ee26aa6a1fd3cd6/.github/workflows/ci.yml#L25-L29).
 
 ### Basic
 
