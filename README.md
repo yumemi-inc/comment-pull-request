@@ -68,6 +68,32 @@ It is often necessary to separate the contents of comments when a check passes a
 
 ## Tips
 
+### Comment file contents
+
+Sample workflow for commenting file contents.
+
+```yaml
+- id: sample
+  run: |
+    ls -al > ./sample.txt
+    {
+      delimiter="$(openssl rand -hex 8)"
+      echo "file<<$delimiter"
+      cat ./sample.txt
+      echo "$delimiter"
+    } >> "$GITHUB_OUTPUT"
+- uses: yumemi-inc/comment-pull-request@v1
+  with:
+    comment: |
+      <details>
+      <summary>sample.txt</summary>
+
+      ${{ steps.sample.outputs.file }}
+      </details>
+```
+
+ref: [Multiline strings](https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#multiline-strings)
+
 ### User mention
 
 Write the account name after `@`.
