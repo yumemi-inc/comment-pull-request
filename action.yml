@@ -44,7 +44,6 @@ runs:
       run: |
         echo "::debug::gh version: $(gh --version | tr '\n' ' ')"
         echo "::debug::jq version: $(jq --version)"
-
         source "$GITHUB_ACTION_PATH/raise_error.sh"
 
         if [ -z "$COMMENT" ]; then raise_error "Specify 'comment' or 'failure-comment' input."; fi
@@ -87,13 +86,13 @@ runs:
         if [[ "$PREVIOUS_COMMENT" == 'hide' && -n "$node_ids" ]]; then
           IFS=$'\n'
           for node_id in $node_ids ; do
-            gh api graphql -f query="
-              mutation {
-                minimizeComment(input: { subjectId: \"$node_id\", classifier: OUTDATED }) {
+            gh api graphql -f subjectId="$node_id" -f query='
+              mutation($subjectId:ID!) {
+                minimizeComment(input: { subjectId: $subjectId, classifier: OUTDATED }) {
                   minimizedComment { isMinimized }
                 }
               }
-            " --silent > /dev/null 2>&1 || raise_permission_error
+            ' --silent > /dev/null 2>&1 || raise_permission_error
           done
         fi
 
