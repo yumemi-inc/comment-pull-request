@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
     permissions:
       contents: read # for checkout
-      pull-requests: write # for this action
+      pull-requests: write # this action requires
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Check out
