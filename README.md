@@ -66,6 +66,10 @@ It is often necessary to separate the contents of comments when a check passes a
       See test results from ...
 ```
 
+### Fail workflows for CI
+
+If you want the workflow to fail along with the comment, specify `true` for `fail` input.
+
 ## Tips
 
 ### Comment file contents

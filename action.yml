@@ -27,6 +27,10 @@ inputs:
     description: 'Commit SHA used to search for pull request number.'
     required: false
     default: ${{ github.sha }}
+  fail:
+    description: 'Fail this action.'
+    required: false
+    default: 'false'
 runs:
   using: 'composite'
   steps:
@@ -104,3 +108,9 @@ runs:
         else
           gh api --method POST "repos/{owner}/{repo}/issues/$pr_number/comments" -f "body=$comment" --silent > /dev/null 2>&1 || raise_permission_error
         fi
+    - name: Fail this action
+      if: inputs.fail == 'true'
+      shell: bash
+      env:
+        COMMENT: ${{ job.status == 'failure' && inputs.comment-if-failure || inputs.comment }}
+      run: echo "::error::$COMMENT" && exit 1
