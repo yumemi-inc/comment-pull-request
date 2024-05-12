@@ -111,4 +111,6 @@ runs:
     - name: Fail this action
       if: inputs.fail == 'true'
       shell: bash
-      run: echo '::error::Failed due to 'fail' input specification.' && exit 1
+      env:
+        COMMENT: ${{ job.status == 'failure' && inputs.comment-if-failure || inputs.comment }}
+      run: echo "::error::$COMMENT" && exit 1
