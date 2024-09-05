@@ -7,7 +7,7 @@ branding:
 inputs:
   comment:
     description: 'Comment text.'
-    required: true
+    required: false
   comment-if-failure:
     description: 'Comment text to be used with priority when job status is failure. If not specified, normal comment will be used.'
     required: false
@@ -49,8 +49,6 @@ runs:
         echo "::debug::gh version: $(gh --version | tr '\n' ' ')"
         echo "::debug::jq version: $(jq --version)"
         source "$GITHUB_ACTION_PATH/raise_error.sh"
-
-        if [ -z "$COMMENT" ]; then raise_error "Specify 'comment' or 'failure-comment' input."; fi
 
         if [ "$IS_VALID_PREVIOUS_COMMENT" != 'true' ]; then raise_error "'previous-comment' input must be one of delete, hide, edit, or keep."; fi
 
@@ -100,6 +98,8 @@ runs:
           done
         fi
 
+        if [ -z "$COMMENT" ]; then exit 0; fi
+
         comment="$(echo -e "<!-- $TAG -->\n\n$COMMENT")"
 
         if [[ "$PREVIOUS_COMMENT" == 'edit' && -n "$ids" ]]; then
@@ -112,5 +112,5 @@ runs:
       if: inputs.fail == 'true'
       shell: bash
       env:
-        COMMENT: ${{ job.status == 'failure' && inputs.comment-if-failure || inputs.comment }}
+        COMMENT: ${{ job.status == 'failure' && inputs.comment-if-failure || inputs.comment || 'unknown' }}
       run: echo "::error::$COMMENT" && exit 1
