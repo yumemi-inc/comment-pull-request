@@ -27,6 +27,10 @@ inputs:
     description: 'Commit SHA used to search for pull request number.'
     required: false
     default: ${{ github.sha }}
+  token:
+    description: 'GitHub token used to post comment.'
+    required: false
+    default: ${{ github.token }}
   fail:
     description: 'Fail this action.'
     required: false
@@ -41,9 +45,9 @@ runs:
         TAG: '<comment-pull-request:${{ inputs.grouping-key }}>'
         PREVIOUS_COMMENT: ${{ inputs.previous-comment }}
         PR_NUMBER: ${{ inputs.pull-request-number }}
-        SHA: ${{ inputs.sha }}        
+        SHA: ${{ inputs.sha }}
         GH_REPO: ${{ github.repository }} # for GitHub CLI
-        GH_TOKEN: ${{ github.token }} # for GitHub CLI
+        GH_TOKEN: ${{ inputs.token }} # for GitHub CLI
         IS_VALID_PREVIOUS_COMMENT: ${{ inputs.previous-comment != null && contains(fromJSON('["delete","hide","edit","keep"]'), inputs.previous-comment) }}
       run: |
         echo "::debug::gh version: $(gh --version | tr '\n' ' ')"
